@@ -7,7 +7,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!drizzle",
+      "!.omc"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -22,7 +30,29 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": [
+                  "@/server/modules/*/application/*",
+                  "@/server/modules/*/application/**",
+                  "@/server/modules/*/domain/*",
+                  "@/server/modules/*/domain/**",
+                  "@/server/modules/*/infra/*",
+                  "@/server/modules/*/infra/**",
+                  "@/server/modules/*/interfaces/*",
+                  "@/server/modules/*/interfaces/**"
+                ],
+                "message": "Import the module public API (@/modules/<name> or @/server/modules/<name>), not internals. UI lives in src/components."
+              }
+            ]
+          }
+        }
+      }
     },
     "domains": {
       "next": "recommended",
