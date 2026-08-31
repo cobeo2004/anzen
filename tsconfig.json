@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/modules/identity": ["./src/server/modules/identity/index.ts"],
+      "@/modules/activity": ["./src/server/modules/activity/index.ts"],
+      "@/modules/notifications": ["./src/server/modules/notifications/index.ts"]
     }
   },
   "include": [
