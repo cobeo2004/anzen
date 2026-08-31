@@ -1,0 +1,53 @@
+services:
+  postgres:
+    profiles: [postgres]
+    image: postgres:17
+    environment:
+      POSTGRES_USER: anzen
+      POSTGRES_PASSWORD: anzen
+      POSTGRES_DB: anzen
+    ports:
+      - "5432:5432"
+    volumes:
+      - anzen_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anzen -d anzen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mysql:
+    profiles: [mysql]
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: anzen
+      MYSQL_DATABASE: anzen
+      MYSQL_USER: anzen
+      MYSQL_PASSWORD: anzen
+    ports:
+      - "3306:3306"
+    volumes:
+      - anzen_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uanzen", "-panzen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    profiles: [redis]
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - anzen_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  anzen_postgres:
+  anzen_mysql:
+  anzen_redis:
