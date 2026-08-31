@@ -32,6 +32,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local data (sqlite, disk object storage)
+.data/
+*.sqlite
+*.sqlite-journal
 
 # vercel
 .vercel
