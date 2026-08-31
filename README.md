@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Anzen
 
-## Getting Started
+Next.js 16 modular monolith. Domain and infrastructure live under `src/server` (`common`, `config`, `core`, `infra`, `modules`). `src/app` is the HTTP adapter. UI lives in `src/components`.
 
-First, run the development server:
+## Stack
+
+- **tRPC** queries, mutations, and SSE subscriptions on `/api/trpc`
+- **Better Auth** (email/password, optional Google/GitHub)
+- **Drizzle** with a dialect factory: SQLite (default), PostgreSQL, MySQL
+- **EventBus**, **Cache**, **ObjectStorage** ports — in-memory / disk now; Redis event bus optional; S3 later
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+cp .env.example .env.local
+# set BETTER_AUTH_SECRET to a long random string
+
+bun install
+bun run db:migrate
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 — sign up, then use **Ping** (identity SSE; activity and notifications consume the same EventBus event) and **Upload demo file** (disk storage).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Switch database
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Provider | Env | Extra |
+| --- | --- | --- |
+| SQLite (default) | `DATABASE_PROVIDER=sqlite` `DATABASE_URL=file:./.data/anzen.sqlite` | none |
+| PostgreSQL | `DATABASE_PROVIDER=postgresql` `DATABASE_URL=postgres://anzen:anzen@localhost:5432/anzen` | `docker compose --profile postgres up -d` |
+| MySQL | `DATABASE_PROVIDER=mysql` `DATABASE_URL=mysql://anzen:anzen@localhost:3306/anzen` | `docker compose --profile mysql up -d` |
 
-## Learn More
+Then `bun run db:migrate`.
 
-To learn more about Next.js, take a look at the following resources:
+### Docker
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Two production-shaped deployments share the same `Dockerfile`. Stop local `bun dev` first (both bind port 3000).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Deployment | Command | What runs |
+| --- | --- | --- |
+| In-memory | `bun run docker:memory` | One Next.js process, SQLite, in-process EventBus |
+| Distributed | `bun run docker:distributed` | Nginx → two Next.js replicas, PostgreSQL, Redis EventBus |
 
-## Deploy on Vercel
+Open http://localhost:3000. Distributed ping/SSE goes through Redis so a request that hits replica A still notifies a dashboard connected to replica B. Activity/notifications cache stays per replica (in-memory); the live SSE feeds are the cross-replica demo.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Local `bun dev` infra is unchanged: `docker compose --profile postgres|mysql|redis up -d`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+OAuth: set `GOOGLE_*` / `GITHUB_*`. Callback URLs are `{BETTER_AUTH_URL}/api/auth/callback/google` and `.../github`.
+
+## Providers (swap later)
+
+```
+EVENT_BUS_PROVIDER=memory   # redis: docker compose --profile redis up -d, then EVENT_BUS_PROVIDER=redis
+EVENT_BUS_URL=redis://127.0.0.1:6379
+CACHE_PROVIDER=memory       # redis not implemented
+STORAGE_PROVIDER=disk       # s3 not implemented
+```
+
+`EVENT_BUS_PROVIDER=memory` fans out inside one Node process. `redis` uses Pub/Sub for live handlers (SSE + module subscribers) and also `XADD`s to streams for a future worker. Identity never calls activity or notifications; both subscribe to `identity.pinged` on the bus.
+
+## Scripts
+
+- `bun run db:generate` / `db:migrate` / `db:studio`
+- `bun run lint` — Biome + dependency-cruiser (`bun run arch`)
