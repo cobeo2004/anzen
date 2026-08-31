@@ -1,0 +1,27 @@
+# dependencies and build output
+node_modules
+.next
+out
+build
+coverage
+
+# git and local env
+.git
+.gitignore
+.env*
+!.env.example
+
+# local data
+.data
+*.sqlite
+*.sqlite-journal
+
+# docs / editor
+*.md
+.cursor
+.omc
+AGENTS.md
+CLAUDE.md
+
+# docker itself (not needed in context)
+.dockerignore
