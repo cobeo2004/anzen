@@ -1,0 +1,88 @@
+name: anzen-distributed
+
+x-app: &app
+  build: .
+  environment:
+    NODE_ENV: production
+    BETTER_AUTH_SECRET: docker-anzen-secret-change-me
+    BETTER_AUTH_URL: http://localhost:3000
+    DATABASE_PROVIDER: postgresql
+    DATABASE_URL: postgres://anzen:anzen@postgres:5432/anzen
+    EVENT_BUS_PROVIDER: redis
+    EVENT_BUS_URL: redis://redis:6379
+    CACHE_PROVIDER: memory
+    STORAGE_PROVIDER: disk
+    STORAGE_LOCAL_DIR: /data/storage
+    SKIP_MIGRATE: "1"
+  volumes:
+    - anzen_distributed_storage:/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: anzen
+      POSTGRES_PASSWORD: anzen
+      POSTGRES_DB: anzen
+    volumes:
+      - anzen_distributed_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U anzen -d anzen"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - anzen_distributed_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    <<: *app
+    entrypoint: ["bun", "run", "db:migrate"]
+    restart: "no"
+
+  app-1:
+    <<: *app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  app-2:
+    <<: *app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-1
+      - app-2
+
+volumes:
+  anzen_distributed_postgres:
+  anzen_distributed_redis:
+  anzen_distributed_storage:
