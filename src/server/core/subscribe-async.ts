@@ -1,12 +1,11 @@
-import type { DomainEvent } from "./domain-event";
-import type { EventBus } from "./event-bus";
+import type { AnyDomainEvent, EventBus, EventCatalog } from "./event-bus";
 
-export async function* subscribeAsync(
-  bus: EventBus,
+export async function* subscribeAsync<TEvents extends EventCatalog>(
+  bus: EventBus<TEvents>,
   channels: string[],
   signal?: AbortSignal,
-): AsyncGenerator<DomainEvent> {
-  const queue: DomainEvent[] = [];
+): AsyncGenerator<AnyDomainEvent<TEvents>> {
+  const queue: AnyDomainEvent<TEvents>[] = [];
   let notify: (() => void) | undefined;
   let finished = false;
 

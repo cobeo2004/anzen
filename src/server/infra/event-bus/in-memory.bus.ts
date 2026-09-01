@@ -1,5 +1,9 @@
 import type { DomainEvent } from "@/server/core/domain-event";
-import type { EventBus, EventHandler } from "@/server/core/event-bus";
+import {
+  attachSubscribeTo,
+  type EventBus,
+  type EventHandler,
+} from "@/server/core/event-bus";
 
 export class InMemoryEventBus implements EventBus {
   private readonly channels = new Map<string, Set<EventHandler>>();
@@ -49,4 +53,6 @@ export class InMemoryEventBus implements EventBus {
       }
     };
   }
+
+  subscribeTo = attachSubscribeTo(this.subscribe.bind(this));
 }

@@ -1,6 +1,10 @@
 import { createClient, type RedisClientType } from "redis";
 import type { DomainEvent } from "@/server/core/domain-event";
-import type { EventBus, EventHandler } from "@/server/core/event-bus";
+import {
+  attachSubscribeTo,
+  type EventBus,
+  type EventHandler,
+} from "@/server/core/event-bus";
 
 function redisChannel(channel: string) {
   return `anzen:${channel}`;
@@ -105,4 +109,6 @@ export class RedisEventBus implements EventBus {
       });
     };
   }
+
+  subscribeTo = attachSubscribeTo(this.subscribe.bind(this));
 }

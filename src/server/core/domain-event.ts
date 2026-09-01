@@ -1,18 +1,18 @@
 import { createId } from "./ids";
 
-export type DomainEvent = {
+export type DomainEvent<TType extends string = string, TPayload = unknown> = {
   id: string;
-  type: string;
-  payload: unknown;
+  type: TType;
+  payload: TPayload;
   occurredAt: string;
   channels: string[];
 };
 
-export function createDomainEvent(input: {
-  type: string;
-  payload: unknown;
+export function createDomainEvent<TType extends string, TPayload>(input: {
+  type: TType;
+  payload: TPayload;
   channels: string[];
-}): DomainEvent {
+}): DomainEvent<TType, TPayload> {
   return {
     id: createId(),
     type: input.type,
