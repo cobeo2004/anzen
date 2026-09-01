@@ -145,4 +145,4 @@ bun run lint             # another terminal
 # browser: dashboard Ping / upload
 ```
 
-Load TanStack intent skills before writing tRPC. Add modules and adapters as described in [modules.md](./modules.md) and [shared-ports.md](./shared-ports.md).
+New to the tree: [How to read the code](./reading.md). Load TanStack intent skills before writing tRPC. Add modules and adapters as described in [modules.md](./modules.md) and [shared-ports.md](./shared-ports.md).

@@ -13,10 +13,11 @@ flowchart TB
     trpcClient["src/lib/trpc"]
   end
 
-  subgraph compose["Composition"]
-    appRouter["src/server/app.router.ts"]
-    trpcCtx["src/server/trpc.ts"]
-    getApp["src/server/index.ts getApp()"]
+  subgraph compose["src/server/composition"]
+    appRouter["app.router.ts"]
+    trpcCtx["trpc.ts"]
+    getApp["index.ts getApp()"]
+    catalogs["events.ts AppEvents"]
   end
 
   subgraph modules["Feature modules"]
@@ -66,20 +67,21 @@ src/
   lib/trpc/            Browser tRPC + React Query provider
   proxy.ts             Cookie-based redirects (Next 16 proxy)
   server/
-    app.router.ts      Mounts module routers + start() subscribers
-    trpc.ts            initTRPC, context, public/protected procedures
-    index.ts           getApp() — factories + router
+    index.ts           Re-exports composition (getApp, AppRouter)
+    composition/       Wires modules, tRPC context, typed EventBus catalog
     config/env.ts      Zod-parsed env (providers, secrets, URLs)
     common/            Shared errors, no framework
     core/              Ports: EventBus, Cache, ObjectStorage, DomainEvent, ids
     infra/             Adapters: auth, database, event-bus, cache, object-storage
     modules/
       <name>/
-        index.ts       Public API — the only thing other modules may import
-        application/   Use cases, events, handlers
-        domain/        Optional pure types (none required yet)
+        index.ts       Public API — createXModule + re-exported contract
+        contract.ts    Event catalog only (composition imports this to avoid cycles)
+        domain/
+          events.ts    Event names + Zod payloads — the cross-module contract
+        application/   Use cases taking ports
+        interfaces/    tRPC routers
         infra/         Optional module-private adapters
-        interfaces/    tRPC routers (and future HTTP adapters)
 ```
 
 Aliases: `@/*` → `src/*`. Module public API also has `@/modules/<name>` → that module’s `index.ts`.
@@ -88,7 +90,7 @@ Aliases: `@/*` → `src/*`. Module public API also has `@/modules/<name>` → th
 
 **Pages** (`/`, `/sign-in`, `/sign-up`, `/dashboard`) render React. Dashboard is a server page that checks Better Auth, then mounts client panels.
 
-**tRPC** `GET|POST /api/trpc` → `fetchRequestHandler` → `appRouter` + `createTRPCContext`. Context always includes `{ db, session, eventBus, cache, storage }`. `protectedProcedure` throws `UNAUTHORIZED` without a session.
+**tRPC** `GET|POST /api/trpc` → `fetchRequestHandler` → `appRouter` + `createTRPCContext`. Context always includes `{ db, session, eventBus, cache, storage }` where `eventBus` is `EventBus<AppEvents>`. `protectedProcedure` throws `UNAUTHORIZED` without a session.
 
 **Auth** `GET|POST /api/auth/[...all]` → Better Auth. Browser client: `src/components/identity/auth-client.ts`.
 
@@ -98,7 +100,11 @@ Aliases: `@/*` → `src/*`. Module public API also has `@/modules/<name>` → th
 
 ## Cross-module events
 
-Modules do not import each other’s application code. A producer publishes a typed event (channel includes the event type name plus `user:${id}` when the UI should SSE). Consumers `subscribe` in `createXModule().start()` from `app.router.ts`.
+Modules do not import each other’s application code. Each module owns a Zod **event catalog** in `domain/events.ts`. Composition merges catalogs into `AppEvents` and wraps the infra bus so `publish` / `subscribeTo` infer payload types.
+
+A producer `publish`es `createDomainEvent({ type, payload, channels })`. Include the event type string as a channel so `subscribeTo(type)` works. Include `user:${userId}` when the browser should SSE.
+
+Consumers call `eventBus.subscribeTo("identity.pinged", (event) => …)` in `start()`. `event.payload` is `IdentityPingedPayload`. Runtime Zod parse happens in the typed wrapper (Redis JSON).
 
 ```mermaid
 sequenceDiagram
@@ -127,14 +133,15 @@ In-memory **cache** is per process. Redis EventBus does **not** share activity/n
 | From | Must not import | Enforced by |
 | --- | --- | --- |
 | `src/server/modules/A/` | `src/server/modules/B/{application,domain,infra,interfaces}/` | Biome `noRestrictedImports` + depcruise |
-| `src/server/infra/` | `src/server/modules/` | depcruise |
-| `src/server/core/` | `infra`, `modules`, `config` | depcruise |
+| `src/server/infra/` | `src/server/modules/`, `src/server/composition/` | depcruise |
+| `src/server/core/` | `infra`, `modules`, `config`, `composition` | depcruise |
+| `src/server/composition/` | module `application/` / `infra/` / `interfaces/` (use `contract.ts` or `@/server/modules/<name>`) | depcruise |
 
 `bun run arch` is part of `bun run lint`. Treat a depcruise failure as a broken PR.
 
 ## Runtime notes
 
 - API routes set `runtime = "nodejs"` and `dynamic = "force-dynamic"`. tRPC subscriptions need a long-lived Node server (`maxDuration = 60` on the tRPC route). Not Vercel Edge.
-- Native / CJS clients are listed in `next.config.ts` `serverExternalPackages`: `better-sqlite3`, `postgres`, `mysql2`, `redis`.
+- Native / CJS clients are listed in `next.config.ts` `serverExternalPackages`: `better-sqlite3`, `postgres`, `mysql2`, `redis`, `@aws-sdk/client-s3`.
 - Factories cache instances on `globalThis` so Next HMR and multi-import graphs share one bus/db/auth.
 - Drizzle schema is **per dialect** under `src/server/infra/database/schema/{sqlite,postgresql,mysql}.ts`. `drizzle.config.ts` picks schema + `drizzle/<provider>/` output from env. Better Auth 1.7 `account.issuer` must stay in all three.

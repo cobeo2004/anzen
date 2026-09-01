@@ -17,12 +17,16 @@ When a port eventually moves to a real package, keep this split: package exports
 
 | Port | File | Methods | Default adapter | Other |
 | --- | --- | --- | --- | --- |
-| `EventBus` | `core/event-bus.ts` | `publish`, `subscribe` | `InMemoryEventBus` | `RedisEventBus` |
+| `EventBus` | `core/event-bus.ts` | `publish`, `subscribe`, `subscribeTo` | `InMemoryEventBus` | `RedisEventBus` |
 | `Cache` | `core/cache.ts` | `get`, `set`, `del` | `InMemoryCache` | `redis` env exists, factory throws |
 | `ObjectStorage` | `core/object-storage.ts` | `put`, `get`, `list`, `delete`, `url` | `DiskObjectStorage` | `S3ObjectStorage` (RustFS, MinIO, AWS) |
 | Database | not a port type | `getDatabase()` | SQLite | PostgreSQL, MySQL via Drizzle |
 
+`EventBus<TEvents>` is generic. Infra adapters implement the untyped bus (`EventBus`). Composition wraps it with `createTypedEventBus(inner, appEventCatalog)` so `publish` / `subscribeTo` infer payloads from the merged Zod catalogs. Call `getAppEventBus()` from composition only; use cases receive the bus as an argument.
+
 Handlers on `EventBus` may return `void` or `Promise<void>`. In-memory bus **awaits** them. Redis bus fires-and-forgets promise rejections to `console.error`.
+
+`subscribeTo(type, handler)` listens on the event-type channel. Adapters implement it with `attachSubscribeTo(subscribe)`. The typed wrapper Zod-parses before calling the handler.
 
 `url(key)` for storage must stay an app-relative `/api/files/...` path so `src/app/api/files/[...key]/route.ts` can enforce session. Do not switch the demo UI to raw S3 URLs without an auth story.
 

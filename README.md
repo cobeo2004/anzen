@@ -1,13 +1,26 @@
 # Anzen
 
-Next.js 16 modular monolith. Domain and infrastructure live under `src/server` (`common`, `config`, `core`, `infra`, `modules`). `src/app` is the HTTP adapter. UI lives in `src/components`.
+Next.js 16 modular monolith. Domain and infrastructure live under `src/server` (`composition`, `common`, `config`, `core`, `infra`, `modules`). `src/app` is the HTTP adapter. UI lives in `src/components`.
+
+## How to read the code
+
+Walk the tree in this order (full guide: [`.docs/reading.md`](./.docs/reading.md)):
+
+1. `src/server/composition/app.router.ts` — mounts modules, calls `start()`
+2. `src/server/composition/events.ts` — merged Zod catalogs → `AppEvents`
+3. `src/server/modules/identity/domain/events.ts` then `application/ping.ts` — producer
+4. `src/server/modules/activity/index.ts` — consumer (`subscribeTo`)
+5. `src/server/core/event-bus.ts` — the port
+6. `src/app/dashboard/page.tsx` and `src/components/identity/dashboard-panel.tsx` — HTTP → UI
+
+Agent notes for architecture, modules, ports, and local workflow live in [`.docs/`](./.docs/index.md).
 
 ## Stack
 
 - **tRPC** queries, mutations, and SSE subscriptions on `/api/trpc`
 - **Better Auth** (email/password, optional Google/GitHub)
 - **Drizzle** with a dialect factory: SQLite (default), PostgreSQL, MySQL
-- **EventBus**, **Cache**, **ObjectStorage** ports — in-memory / disk by default; Redis event bus and S3-compatible storage (RustFS) for distributed Docker
+- **Typed EventBus**, **Cache**, **ObjectStorage** ports — in-memory / disk by default; Redis event bus and S3-compatible storage (RustFS) for distributed Docker
 
 ## Setup
 
@@ -62,11 +75,12 @@ S3_SECRET_KEY=rustfsadmin
 S3_BUCKET=anzen
 ```
 
-`EVENT_BUS_PROVIDER=memory` fans out inside one Node process. `redis` uses Pub/Sub for live handlers (SSE + module subscribers) and also `XADD`s to streams for a future worker. Identity never calls activity or notifications; both subscribe to `identity.pinged` on the bus.
+`EVENT_BUS_PROVIDER=memory` fans out inside one Node process. `redis` uses Pub/Sub for live handlers (SSE + module subscribers) and also `XADD`s to streams for a future worker. Identity never calls activity or notifications; both `subscribeTo("identity.pinged")` on the typed bus.
 
 `STORAGE_PROVIDER=s3` talks to any S3-compatible API (RustFS, MinIO, AWS). `url()` stays `/api/files/...` so downloads still require a session.
 
 ## Scripts
 
-- `bun run db:generate` / `db:migrate` / `db:studio`
+- `bun run db:generate` / `db:migrate`
 - `bun run lint` — Biome + dependency-cruiser (`bun run arch`)
+- `bunx tsc --noEmit` — types (not part of `lint`)

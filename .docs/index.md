@@ -4,6 +4,7 @@ Read this folder before changing architecture, modules, ports, or composition. D
 
 | Doc | When to read |
 | --- | --- |
+| [How to read the code](./reading.md) | First pass on the tree: walking order, composition vs modules, one ping end-to-end |
 | [How to develop](./develop.md) | Setup, `bun dev`, env, migrations, Docker, how to verify |
 | [Architecture](./architecture.md) | New feature, refactor, “where does this belong?”, diagrams of the monolith |
 | [Modules](./modules.md) | Add / change a feature module, EventBus between modules, public API, UI |
@@ -11,7 +12,7 @@ Read this folder before changing architecture, modules, ports, or composition. D
 
 ## What this repo is
 
-A **Next.js 16 modular monolith** on Bun. One deployable app. Feature code is split into modules that talk through **ports** (`src/server/core`) and a shared **EventBus**, not through each other’s internals.
+A **Next.js 16 modular monolith** on Bun. One deployable app. Feature code is split into modules that talk through **ports** (`src/server/core`) and a typed **EventBus**, not through each other’s internals.
 
 Canonical server code is **`src/server`**. Do not create a parallel `src/core` or `src/infra` at the `src/` root.
 
@@ -39,4 +40,4 @@ Canonical server code is **`src/server`**. Do not create a parallel `src/core` o
 
 ## Composition root
 
-Wire new modules and `start()` subscribers in `src/server/app.router.ts`. Factories (`getEventBus`, `getCache`, `getDatabase`, `getObjectStorage`, `getAuth`) live under `src/server/infra`. tRPC context is built in `src/server/trpc.ts`.
+Wire new modules and `start()` subscribers in `src/server/composition/app.router.ts`. tRPC context is `src/server/composition/trpc.ts` (`eventBus` is `EventBus<AppEvents>` from `getAppEventBus()`). Event catalogs merge in `src/server/composition/events.ts`. Infra factories (`getEventBus`, `getCache`, `getDatabase`, `getObjectStorage`, `getAuth`) stay under `src/server/infra`. `src/server/index.ts` re-exports composition.
