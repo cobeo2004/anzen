@@ -71,6 +71,22 @@ export function getAppEnv() {
       process.env.STORAGE_PROVIDER ?? "disk",
     ),
     storageLocalDir: process.env.STORAGE_LOCAL_DIR ?? ".data/storage",
+    s3: readS3Env(),
+  };
+}
+
+function readS3Env() {
+  const endpoint = process.env.S3_ENDPOINT || undefined;
+  return {
+    endpoint,
+    region: process.env.S3_REGION ?? "us-east-1",
+    accessKey: process.env.S3_ACCESS_KEY ?? "",
+    secretKey: process.env.S3_SECRET_KEY ?? "",
+    bucket: process.env.S3_BUCKET ?? "anzen",
+    forcePathStyle:
+      process.env.S3_FORCE_PATH_STYLE === "false"
+        ? false
+        : Boolean(endpoint) || process.env.S3_FORCE_PATH_STYLE === "true",
   };
 }
 
