@@ -19,7 +19,7 @@ When a port eventually moves to a real package, keep this split: package exports
 | --- | --- | --- | --- | --- |
 | `EventBus` | `core/event-bus.ts` | `publish`, `subscribe` | `InMemoryEventBus` | `RedisEventBus` |
 | `Cache` | `core/cache.ts` | `get`, `set`, `del` | `InMemoryCache` | `redis` env exists, factory throws |
-| `ObjectStorage` | `core/object-storage.ts` | `put`, `get`, `list`, `delete`, `url` | `DiskObjectStorage` | `s3` env exists, factory throws |
+| `ObjectStorage` | `core/object-storage.ts` | `put`, `get`, `list`, `delete`, `url` | `DiskObjectStorage` | `S3ObjectStorage` (RustFS, MinIO, AWS) |
 | Database | not a port type | `getDatabase()` | SQLite | PostgreSQL, MySQL via Drizzle |
 
 Handlers on `EventBus` may return `void` or `Promise<void>`. In-memory bus **awaits** them. Redis bus fires-and-forgets promise rejections to `console.error`.
@@ -50,7 +50,7 @@ Redis provider is reserved in env. Implement `infra/cache/redis.cache.ts` agains
 
 ### ObjectStorage
 
-Disk writes under `STORAGE_LOCAL_DIR` (default `.data/storage`) plus sidecar `.meta.json` for content type. An S3-compatible adapter (AWS, MinIO, RustFS) should implement the same interface, create/ensure the bucket in the factory, and keep `url()` on `/api/files`.
+Disk writes under `STORAGE_LOCAL_DIR` (default `.data/storage`) plus sidecar `.meta.json` for content type. `STORAGE_PROVIDER=s3` uses `@aws-sdk/client-s3` against any S3-compatible endpoint (RustFS in distributed Docker, MinIO, or AWS). The factory creates the bucket if missing, uses path-style URLs when `S3_ENDPOINT` is set, and keeps `url()` on `/api/files`.
 
 ### Database
 
@@ -77,16 +77,21 @@ bun run db:migrate
 | `EVENT_BUS_PROVIDER` | `memory` \| `redis` |
 | `EVENT_BUS_URL` | Redis URL |
 | `CACHE_PROVIDER` | `memory` \| `redis` (redis not implemented) |
-| `STORAGE_PROVIDER` | `disk` \| `s3` (s3 not implemented) |
+| `STORAGE_PROVIDER` | `disk` \| `s3` |
 | `STORAGE_LOCAL_DIR` | Disk root |
+| `S3_ENDPOINT` | S3-compatible API (RustFS `http://127.0.0.1:9000` / `http://rustfs:9000`) |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | Required when `STORAGE_PROVIDER=s3` |
+| `S3_BUCKET` | Default `anzen` |
+| `S3_REGION` | Default `us-east-1` |
+| `S3_FORCE_PATH_STYLE` | Default true when `S3_ENDPOINT` is set |
 
 ## Docker
 
 | File | Use |
 | --- | --- |
-| `docker-compose.yml` | Local infra profiles: `postgres`, `mysql`, `redis` |
-| `compose.memory.yml` | One app, SQLite, in-memory bus — `bun run docker:memory` |
-| `compose.distributed.yml` | Postgres + Redis + two app replicas + nginx — `bun run docker:distributed` |
+| `docker-compose.yml` | Local infra profiles: `postgres`, `mysql`, `redis`, `rustfs` |
+| `compose.memory.yml` | One app, SQLite, in-memory bus, disk storage — `bun run docker:memory` |
+| `compose.distributed.yml` | Postgres + Redis + RustFS + two app replicas + nginx — `bun run docker:distributed` |
 
 Do not add new brokers (Kafka, RabbitMQ) or an outbox in those compose files unless the product asks for them.
 

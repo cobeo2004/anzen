@@ -7,7 +7,7 @@ Next.js 16 modular monolith. Domain and infrastructure live under `src/server` (
 - **tRPC** queries, mutations, and SSE subscriptions on `/api/trpc`
 - **Better Auth** (email/password, optional Google/GitHub)
 - **Drizzle** with a dialect factory: SQLite (default), PostgreSQL, MySQL
-- **EventBus**, **Cache**, **ObjectStorage** ports — in-memory / disk now; Redis event bus optional; S3 later
+- **EventBus**, **Cache**, **ObjectStorage** ports — in-memory / disk by default; Redis event bus and S3-compatible storage (RustFS) for distributed Docker
 
 ## Setup
 
@@ -20,7 +20,7 @@ bun run db:migrate
 bun dev
 ```
 
-Open http://localhost:3000 — sign up, then use **Ping** (identity SSE; activity and notifications consume the same EventBus event) and **Upload demo file** (disk storage).
+Open http://localhost:3000 — sign up, then use **Ping** (identity SSE; activity and notifications consume the same EventBus event) and **Upload demo file** (disk locally; RustFS in distributed Docker).
 
 ### Switch database
 
@@ -38,12 +38,14 @@ Two production-shaped deployments share the same `Dockerfile`. Stop local `bun d
 
 | Deployment | Command | What runs |
 | --- | --- | --- |
-| In-memory | `bun run docker:memory` | One Next.js process, SQLite, in-process EventBus |
-| Distributed | `bun run docker:distributed` | Nginx → two Next.js replicas, PostgreSQL, Redis EventBus |
+| In-memory | `bun run docker:memory` | One Next.js process, SQLite, in-process EventBus, disk storage |
+| Distributed | `bun run docker:distributed` | Nginx → two Next.js replicas, PostgreSQL, Redis EventBus, RustFS (S3) |
 
-Open http://localhost:3000. Distributed ping/SSE goes through Redis so a request that hits replica A still notifies a dashboard connected to replica B. Activity/notifications cache stays per replica (in-memory); the live SSE feeds are the cross-replica demo.
+Open http://localhost:3000. Distributed ping/SSE goes through Redis so a request that hits replica A still notifies a dashboard connected to replica B. Uploads go to RustFS so both replicas share objects; the app still serves them at `/api/files/...` (session required). Activity/notifications cache stays per replica (in-memory); the live SSE feeds are the cross-replica demo.
 
-Local `bun dev` infra is unchanged: `docker compose --profile postgres|mysql|redis up -d`.
+RustFS console: http://localhost:9001 (`rustfsadmin` / `rustfsadmin`).
+
+Local `bun dev` infra: `docker compose --profile postgres|mysql|redis|rustfs up -d`.
 
 OAuth: set `GOOGLE_*` / `GITHUB_*`. Callback URLs are `{BETTER_AUTH_URL}/api/auth/callback/google` and `.../github`.
 
@@ -53,10 +55,16 @@ OAuth: set `GOOGLE_*` / `GITHUB_*`. Callback URLs are `{BETTER_AUTH_URL}/api/aut
 EVENT_BUS_PROVIDER=memory   # redis: docker compose --profile redis up -d, then EVENT_BUS_PROVIDER=redis
 EVENT_BUS_URL=redis://127.0.0.1:6379
 CACHE_PROVIDER=memory       # redis not implemented
-STORAGE_PROVIDER=disk       # s3 not implemented
+STORAGE_PROVIDER=disk       # s3: docker compose --profile rustfs up -d, then STORAGE_PROVIDER=s3
+S3_ENDPOINT=http://127.0.0.1:9000
+S3_ACCESS_KEY=rustfsadmin
+S3_SECRET_KEY=rustfsadmin
+S3_BUCKET=anzen
 ```
 
 `EVENT_BUS_PROVIDER=memory` fans out inside one Node process. `redis` uses Pub/Sub for live handlers (SSE + module subscribers) and also `XADD`s to streams for a future worker. Identity never calls activity or notifications; both subscribe to `identity.pinged` on the bus.
+
+`STORAGE_PROVIDER=s3` talks to any S3-compatible API (RustFS, MinIO, AWS). `url()` stays `/api/files/...` so downloads still require a session.
 
 ## Scripts
 

@@ -74,7 +74,22 @@ EVENT_BUS_URL=redis://127.0.0.1:6379
 
 Redis locally: `docker compose --profile redis up -d`, then set provider to `redis` and restart `bun dev`.
 
-`CACHE_PROVIDER=redis` and `STORAGE_PROVIDER=s3` are reserved and **throw** in the factories. Leave them `memory` / `disk`.
+`CACHE_PROVIDER=redis` is reserved and **throws** in the factory. Leave it `memory`.
+
+### Object storage
+
+```
+STORAGE_PROVIDER=disk
+STORAGE_LOCAL_DIR=.data/storage
+
+STORAGE_PROVIDER=s3
+S3_ENDPOINT=http://127.0.0.1:9000
+S3_ACCESS_KEY=rustfsadmin
+S3_SECRET_KEY=rustfsadmin
+S3_BUCKET=anzen
+```
+
+RustFS locally: `docker compose --profile rustfs up -d`, then set `STORAGE_PROVIDER=s3` and restart `bun dev`. Console: http://localhost:9001 (`rustfsadmin` / `rustfsadmin`).
 
 ### Auth / OAuth
 
@@ -99,11 +114,11 @@ Stop `bun dev` first — both bind port **3000**.
 | Command | Shape |
 | --- | --- |
 | `bun run docker:memory` | One container, SQLite, in-memory bus |
-| `bun run docker:distributed` | Nginx → `app-1` + `app-2`, Postgres, Redis bus, shared disk volume |
+| `bun run docker:distributed` | Nginx → `app-1` + `app-2`, Postgres, Redis bus, RustFS |
 
-Distributed: live SSE crosses replicas via Redis. Activity/notifications **lists** stay in per-process memory cache.
+Distributed: live SSE crosses replicas via Redis. Uploads land in RustFS so both replicas read the same objects. Activity/notifications **lists** stay in per-process memory cache.
 
-`docker-compose.yml` is **infra only** for `bun dev` (profiles `postgres`, `mysql`, `redis`). Do not use it to run the Next app.
+`docker-compose.yml` is **infra only** for `bun dev` (profiles `postgres`, `mysql`, `redis`, `rustfs`). Do not use it to run the Next app.
 
 ## Schema / migration workflow
 

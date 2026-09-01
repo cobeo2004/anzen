@@ -37,7 +37,7 @@ flowchart TB
     db["Drizzle factory"]
     buses["InMemory / Redis EventBus"]
     memCache["InMemory Cache"]
-    disk["Disk ObjectStorage"]
+    disk["Disk / S3 ObjectStorage"]
   end
 
   ui --> trpcClient
