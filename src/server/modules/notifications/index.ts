@@ -1,13 +1,17 @@
-import { identityEvents } from "@/modules/identity";
+import { type IdentityEvents, identityEvents } from "@/modules/identity";
 import type { Cache } from "@/server/core/cache";
 import type { EventBus } from "@/server/core/event-bus";
 import { recordIdentityPinged } from "./application/record-ping";
+import type { NotificationEvents } from "./domain/events";
 import { notificationsRouter } from "./interfaces/notifications.router";
 
 export {
+  type NotificationCreatedPayload,
+  type NotificationEvents,
   notificationCreatedPayload,
+  notificationEventCatalog,
   notificationEvents,
-} from "./application/events";
+} from "./contract";
 
 const globalForNotifications = globalThis as unknown as {
   notificationsUnsubscribe?: () => void;
@@ -16,13 +20,16 @@ const globalForNotifications = globalThis as unknown as {
 export function createNotificationsModule() {
   return {
     router: notificationsRouter,
-    start(ports: { eventBus: EventBus; cache: Cache }) {
+    start<TEvents extends IdentityEvents & NotificationEvents>(ports: {
+      eventBus: EventBus<TEvents>;
+      cache: Cache;
+    }) {
       if (globalForNotifications.notificationsUnsubscribe) {
         return;
       }
 
       globalForNotifications.notificationsUnsubscribe =
-        ports.eventBus.subscribe([identityEvents.pinged], (event) =>
+        ports.eventBus.subscribeTo(identityEvents.pinged, (event) =>
           recordIdentityPinged({
             event,
             cache: ports.cache,

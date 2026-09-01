@@ -1,8 +1,11 @@
 import { tracked } from "@trpc/server";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+} from "@/server/composition/trpc";
 import { subscribeAsync } from "@/server/core/subscribe-async";
-import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
-import { notificationEvents } from "../application/events";
 import { listInbox } from "../application/list-inbox";
+import { notificationEvents } from "../domain/events";
 
 export const notificationsRouter = createTRPCRouter({
   inbox: protectedProcedure.query(({ ctx }) =>

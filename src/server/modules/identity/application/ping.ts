@@ -1,15 +1,15 @@
 import type { Cache } from "@/server/core/cache";
 import { createDomainEvent } from "@/server/core/domain-event";
 import type { EventBus } from "@/server/core/event-bus";
-import { identityEvents } from "./events";
+import { type IdentityEvents, identityEvents } from "../domain/events";
 
 export function lastPingCacheKey(userId: string) {
   return `identity:last-ping:${userId}`;
 }
 
-export async function ping(input: {
+export async function ping<TEvents extends IdentityEvents>(input: {
   userId: string;
-  eventBus: EventBus;
+  eventBus: EventBus<TEvents>;
   cache: Cache;
 }) {
   const at = new Date().toISOString();

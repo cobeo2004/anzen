@@ -1,8 +1,11 @@
 import { tracked } from "@trpc/server";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+} from "@/server/composition/trpc";
 import { subscribeAsync } from "@/server/core/subscribe-async";
-import { createTRPCRouter, protectedProcedure } from "@/server/trpc";
-import { activityEvents } from "../application/events";
 import { listRecent } from "../application/list-recent";
+import { activityEvents } from "../domain/events";
 
 export const activityRouter = createTRPCRouter({
   recent: protectedProcedure.query(({ ctx }) =>

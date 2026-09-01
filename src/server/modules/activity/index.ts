@@ -1,10 +1,17 @@
-import { identityEvents } from "@/modules/identity";
+import { type IdentityEvents, identityEvents } from "@/modules/identity";
 import type { Cache } from "@/server/core/cache";
 import type { EventBus } from "@/server/core/event-bus";
 import { recordIdentityPinged } from "./application/record-ping";
+import type { ActivityEvents } from "./domain/events";
 import { activityRouter } from "./interfaces/activity.router";
 
-export { activityEvents, activityRecordedPayload } from "./application/events";
+export {
+  type ActivityEvents,
+  type ActivityRecordedPayload,
+  activityEventCatalog,
+  activityEvents,
+  activityRecordedPayload,
+} from "./contract";
 
 const globalForActivity = globalThis as unknown as {
   activityUnsubscribe?: () => void;
@@ -13,13 +20,16 @@ const globalForActivity = globalThis as unknown as {
 export function createActivityModule() {
   return {
     router: activityRouter,
-    start(ports: { eventBus: EventBus; cache: Cache }) {
+    start<TEvents extends IdentityEvents & ActivityEvents>(ports: {
+      eventBus: EventBus<TEvents>;
+      cache: Cache;
+    }) {
       if (globalForActivity.activityUnsubscribe) {
         return;
       }
 
-      globalForActivity.activityUnsubscribe = ports.eventBus.subscribe(
-        [identityEvents.pinged],
+      globalForActivity.activityUnsubscribe = ports.eventBus.subscribeTo(
+        identityEvents.pinged,
         (event) =>
           recordIdentityPinged({
             event,

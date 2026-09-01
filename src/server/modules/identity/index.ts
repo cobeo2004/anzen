@@ -1,6 +1,12 @@
 import { identityRouter } from "./interfaces/identity.router";
 
-export { identityEvents, identityPingedPayload } from "./application/events";
+export {
+  type IdentityEvents,
+  type IdentityPingedPayload,
+  identityEventCatalog,
+  identityEvents,
+  identityPingedPayload,
+} from "./contract";
 
 export function createIdentityModule() {
   return {

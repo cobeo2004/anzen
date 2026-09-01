@@ -13,3 +13,13 @@ export const notificationCreatedPayload = z.object({
 export type NotificationCreatedPayload = z.infer<
   typeof notificationCreatedPayload
 >;
+
+export const notificationEventCatalog = {
+  [notificationEvents.created]: notificationCreatedPayload,
+} as const;
+
+export type NotificationEvents = {
+  [K in keyof typeof notificationEventCatalog]: z.infer<
+    (typeof notificationEventCatalog)[K]
+  >;
+};

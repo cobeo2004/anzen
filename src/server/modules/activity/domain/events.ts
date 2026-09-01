@@ -11,3 +11,13 @@ export const activityRecordedPayload = z.object({
 });
 
 export type ActivityRecordedPayload = z.infer<typeof activityRecordedPayload>;
+
+export const activityEventCatalog = {
+  [activityEvents.recorded]: activityRecordedPayload,
+} as const;
+
+export type ActivityEvents = {
+  [K in keyof typeof activityEventCatalog]: z.infer<
+    (typeof activityEventCatalog)[K]
+  >;
+};

@@ -6,13 +6,14 @@ import type { ObjectStorage } from "@/server/core/object-storage";
 import { getAuth, type Session } from "@/server/infra/auth/auth";
 import { getCache } from "@/server/infra/cache/cache.factory";
 import { getDatabase } from "@/server/infra/database/database.factory";
-import { getEventBus } from "@/server/infra/event-bus/event-bus.factory";
 import { getObjectStorage } from "@/server/infra/object-storage/object-storage.factory";
+import { getAppEventBus } from "./app-event-bus";
+import type { AppEvents } from "./events";
 
 export type TRPCContext = {
   db: unknown;
   session: Session | null;
-  eventBus: EventBus;
+  eventBus: EventBus<AppEvents>;
   cache: Cache;
   storage: ObjectStorage;
 };
@@ -24,7 +25,7 @@ export async function createTRPCContext(opts: {
   return {
     db: getDatabase().db,
     session,
-    eventBus: getEventBus(),
+    eventBus: getAppEventBus(),
     cache: getCache(),
     storage: getObjectStorage(),
   };

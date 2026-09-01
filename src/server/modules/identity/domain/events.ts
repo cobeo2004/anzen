@@ -10,3 +10,13 @@ export const identityPingedPayload = z.object({
 });
 
 export type IdentityPingedPayload = z.infer<typeof identityPingedPayload>;
+
+export const identityEventCatalog = {
+  [identityEvents.pinged]: identityPingedPayload,
+} as const;
+
+export type IdentityEvents = {
+  [K in keyof typeof identityEventCatalog]: z.infer<
+    (typeof identityEventCatalog)[K]
+  >;
+};

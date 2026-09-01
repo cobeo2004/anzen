@@ -9,7 +9,7 @@ import {
 } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { type ReactNode, useState } from "react";
-import type { AppRouter } from "@/server/app.router";
+import type { AppRouter } from "@/server/composition/app.router";
 
 export const { TRPCProvider, useTRPC } = createTRPCContext<AppRouter>();
 

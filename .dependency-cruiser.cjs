@@ -24,7 +24,24 @@ module.exports = {
       comment: "Core ports stay framework-free.",
       severity: "error",
       from: { path: "^src/server/core/" },
-      to: { path: "^src/server/(infra|modules|config)/" },
+      to: { path: "^src/server/(infra|modules|config|composition)/" },
+    },
+    {
+      name: "infra-must-not-import-composition",
+      comment: "Adapters cannot depend on the composition root.",
+      severity: "error",
+      from: { path: "^src/server/infra/" },
+      to: { path: "^src/server/composition/" },
+    },
+    {
+      name: "composition-must-not-import-module-internals",
+      comment:
+        "Composition wires modules through public API or contract.ts, not application/interfaces.",
+      severity: "error",
+      from: { path: "^src/server/composition/" },
+      to: {
+        path: "^src/server/modules/([^/]+)/(application|infra|interfaces)/",
+      },
     },
     {
       name: "no-circular",

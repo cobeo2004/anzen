@@ -1,11 +1,15 @@
-import { identityEvents, identityPingedPayload } from "@/modules/identity";
+import {
+  type IdentityEvents,
+  type IdentityPingedPayload,
+  identityEvents,
+} from "@/modules/identity";
 import type { Cache } from "@/server/core/cache";
 import {
   createDomainEvent,
   type DomainEvent,
 } from "@/server/core/domain-event";
 import type { EventBus } from "@/server/core/event-bus";
-import { activityEvents } from "./events";
+import { type ActivityEvents, activityEvents } from "../domain/events";
 
 const MAX_RECENT = 20;
 
@@ -20,21 +24,14 @@ export type ActivityRecord = {
   source: "activity";
 };
 
-export async function recordIdentityPinged(input: {
-  event: DomainEvent;
+export async function recordIdentityPinged<
+  TEvents extends IdentityEvents & ActivityEvents,
+>(input: {
+  event: DomainEvent<typeof identityEvents.pinged, IdentityPingedPayload>;
   cache: Cache;
-  eventBus: EventBus;
+  eventBus: EventBus<TEvents>;
 }) {
-  if (input.event.type !== identityEvents.pinged) {
-    return;
-  }
-
-  const parsed = identityPingedPayload.safeParse(input.event.payload);
-  if (!parsed.success) {
-    return;
-  }
-
-  const { userId, at } = parsed.data;
+  const { userId, at } = input.event.payload;
   const key = activityRecentCacheKey(userId);
   const current = (await input.cache.get<ActivityRecord[]>(key)) ?? [];
   const record: ActivityRecord = {

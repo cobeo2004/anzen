@@ -1,17 +1,17 @@
 import { TRPCError, tracked } from "@trpc/server";
 import { z } from "zod";
-import { oauthProvidersEnabled } from "@/server/config/env";
-import { subscribeAsync } from "@/server/core/subscribe-async";
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
-} from "@/server/trpc";
-import { identityEvents } from "../application/events";
+} from "@/server/composition/trpc";
+import { oauthProvidersEnabled } from "@/server/config/env";
+import { subscribeAsync } from "@/server/core/subscribe-async";
 import { listUploads } from "../application/list-uploads";
 import { getMe } from "../application/me";
 import { ping } from "../application/ping";
 import { uploadDemo } from "../application/upload-demo";
+import { identityEvents } from "../domain/events";
 
 export const identityRouter = createTRPCRouter({
   providers: publicProcedure.query(() => oauthProvidersEnabled()),
